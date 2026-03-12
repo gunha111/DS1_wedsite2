@@ -1,0 +1,235 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Metronome</title>
+
+<style>
+:root{
+ --bg:#000;
+ --body-fill:#dcdcdc;
+ --body-stroke:#ffffff;
+ --inner-stroke:#7fd6a7;
+ --base-fill:#f53d33;
+ --arm:#66d7ff;
+ --weight:#cb4a9a;
+ --swing-duration:1.35s;
+}
+
+*{box-sizing:border-box}
+
+html,body{
+ margin:0;
+ width:100%;
+ height:100%;
+ background:var(--bg);
+ font-family:Arial, sans-serif;
+ color:white;
+ overflow:hidden;
+}
+
+/* TITLE */
+.title{
+ position:absolute;
+ top:18px;
+ left:22px;
+ font-size:14px;
+ letter-spacing:1px;
+ font-weight:600;
+}
+
+.wrap{
+ min-height:100vh;
+ display:grid;
+ place-items:center;
+ padding:24px;
+ gap:18px;
+}
+
+.ui{
+ display:flex;
+ flex-direction:column;
+ align-items:center;
+ gap:10px;
+}
+
+.swatches{
+ display:flex;
+ gap:10px;
+}
+
+.swatch{
+ width:22px;
+ height:22px;
+ border-radius:50%;
+ border:2px solid rgba(255,255,255,0.8);
+ cursor:pointer;
+}
+
+.swatch.yellow{background:#f2c230}
+.swatch.red{background:#f53d33}
+.swatch.blue{background:#2f7cff}
+
+.time-info{
+ min-height:16px;
+ font-size:12px;
+ opacity:.86;
+}
+
+/* BPM */
+.bpm-row{
+ display:flex;
+ align-items:center;
+ gap:10px;
+ width:min(320px,78vw);
+ justify-content:center;
+}
+
+.bpm-row label,
+.bpm-row output{
+ font-size:13px;
+ white-space:nowrap;
+}
+
+.bpm-row input[type="range"]{
+ width:100%;
+ accent-color:#ffffff;
+}
+
+svg{
+ width:min(72vmin,560px);
+ height:auto;
+ display:block;
+}
+
+.arm-group{
+ transform-box:fill-box;
+ transform-origin:50% 100%;
+ animation:swing var(--swing-duration) ease-in-out infinite alternate;
+}
+
+@keyframes swing{
+ 0%{transform:rotate(-18deg)}
+ 100%{transform:rotate(18deg)}
+}
+</style>
+</head>
+
+<body>
+
+<div class="title">SPEED OF THE MUSIC</div>
+
+<div class="wrap">
+
+<div class="ui">
+
+<div class="swatches">
+<button class="swatch yellow" data-color="#f2c230" data-time="6am ~ 11am"></button>
+<button class="swatch red" data-color="#f53d33" data-time="12pm ~ 5pm"></button>
+<button class="swatch blue" data-color="#2f7cff" data-time="6pm ~ 5am"></button>
+</div>
+
+<div class="time-info" id="timeInfo">12pm ~ 5pm</div>
+
+<div class="bpm-row">
+<label for="bpmSlider">BPM</label>
+<input id="bpmSlider" type="range" min="30" max="240" value="60">
+<output id="bpmValue">60</output>
+</div>
+
+</div>
+
+<svg viewBox="0 0 420 520">
+
+<polygon points="110,45 310,45 380,450 40,450"
+fill="var(--body-fill)" stroke="var(--body-stroke)" stroke-width="7"/>
+
+<polygon points="118,56 302,56 368,442 52,442"
+fill="none" stroke="var(--inner-stroke)" stroke-width="1.8"/>
+
+<polygon points="80,315 350,315 372,432 58,432"
+fill="var(--base-fill)"/>
+
+<g class="arm-group">
+<line x1="210" y1="76" x2="210" y2="360"
+stroke="var(--arm)" stroke-width="2.1"/>
+<circle cx="210" cy="118" r="18" fill="var(--weight)"/>
+</g>
+
+</svg>
+
+</div>
+
+<script>
+
+/* COLOR */
+const root=document.documentElement
+const swatches=document.querySelectorAll(".swatch")
+const timeInfo=document.getElementById("timeInfo")
+
+function setColor(btn){
+ root.style.setProperty("--base-fill",btn.dataset.color)
+ timeInfo.textContent=btn.dataset.time
+}
+
+swatches.forEach(b=>{
+ b.addEventListener("click",()=>setColor(b))
+})
+
+/* BPM + ANIMATION */
+const bpmSlider=document.getElementById("bpmSlider")
+const bpmValue=document.getElementById("bpmValue")
+
+let bpm=60
+let tickInterval
+
+function updateBpm(v){
+ bpm=Number(v)
+ bpmValue.textContent=bpm
+ const duration=60/bpm
+ root.style.setProperty("--swing-duration",duration+"s")
+ startTick()
+}
+
+bpmSlider.addEventListener("input",e=>updateBpm(e.target.value))
+
+/* METRONOME SOUND */
+const audioCtx=new (window.AudioContext||window.webkitAudioContext)()
+
+function tick(){
+ const osc=audioCtx.createOscillator()
+ const gain=audioCtx.createGain()
+
+ osc.type="square"
+ osc.frequency.value=1200
+
+ gain.gain.setValueAtTime(1,audioCtx.currentTime)
+ gain.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.03)
+
+ osc.connect(gain)
+ gain.connect(audioCtx.destination)
+
+ osc.start()
+ osc.stop(audioCtx.currentTime+0.03)
+}
+
+function startTick(){
+ if(tickInterval) clearInterval(tickInterval)
+ const interval=(60/bpm)*1000
+ tickInterval=setInterval(tick,interval)
+}
+
+/* START */
+updateBpm(60)
+
+/* enable audio after first user interaction */
+document.body.addEventListener("click",()=>{
+ if(audioCtx.state==="suspended") audioCtx.resume()
+},{once:true})
+
+</script>
+
+</body>
+</html>
